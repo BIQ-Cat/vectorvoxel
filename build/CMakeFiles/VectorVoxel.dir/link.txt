@@ -1,2 +1,0 @@
-/usr/bin/ar qc libVectorVoxel.a CMakeFiles/VectorVoxel.dir/src/render.cpp.o CMakeFiles/VectorVoxel.dir/src/screen.cpp.o
-/usr/bin/ranlib libVectorVoxel.a

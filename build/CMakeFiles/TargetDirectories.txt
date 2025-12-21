@@ -1,0 +1,7 @@
+/home/andev58/projects/vectorvoxel/build/CMakeFiles/VectorVoxel.dir
+/home/andev58/projects/vectorvoxel/build/CMakeFiles/edit_cache.dir
+/home/andev58/projects/vectorvoxel/build/CMakeFiles/rebuild_cache.dir
+/home/andev58/projects/vectorvoxel/build/CMakeFiles/list_install_components.dir
+/home/andev58/projects/vectorvoxel/build/CMakeFiles/install.dir
+/home/andev58/projects/vectorvoxel/build/CMakeFiles/install/local.dir
+/home/andev58/projects/vectorvoxel/build/CMakeFiles/install/strip.dir

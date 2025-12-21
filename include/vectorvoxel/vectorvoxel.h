@@ -20,7 +20,7 @@ struct VECTORVOXEL_EXPORT Camera
     float angle_vel;
 };
 
-class Screen
+class VECTORVOXEL_EXPORT Screen
 {
   public:
     Screen(double fov, int ray_distance, int width, int height);

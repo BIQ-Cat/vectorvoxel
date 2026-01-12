@@ -1,137 +1,132 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 project(
   VectorVoxel
   VERSION 1.0.0
   DESCRIPTION "3D engine that combines vector and voxel approach"
   LANGUAGES CXX)
 
-add_library(VectorVoxel)
-add_library(VectorVoxel::VectorVoxel ALIAS VectorVoxel)
-
-# ---------------------------------------
-# ------- CMAKE DEFENITIONS -------------
-# ---------------------------------------
-
-include(cmake/utils.cmake)
-
 # ----------------------------------------
 # ----------- BASIC OPTIONS --------------
 # ----------------------------------------
 
-include(GNUInstallDirs)
-option(VECTORVOXEL_BUILD_TESTS "Build VectorVoxel with tests" OFF)
-option(VECTORVOXEL_BUILD_EXAMPLES "Build VectorVoxel with examples" OFF)
-option(VECTORVOXEL_INSTALL "Generate target for VectorVoxel"
-       ${PROJECT_IS_TOP_LEVEL})
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+option(VECTORVOXEL_BUILD_EXAMPLES "Build examples" OFF)
+option(VECTORVOXEL_BUILD_TESTS "Build tests" OFF)
 
-set_if_undefined(
-  VECTORVOXEL_INSTALL_CMAKEDIR
-  "${CMAKE_INSTALL_LIBDIR}/cmake/vectorvoxel-${PROJECT_VERSION}" CACHE STRING
-  "Install path for VectorVoxel-related stuff")
-if(DEFINED VECTORVOXEL_SHARED_LIBS)
-  set(BUILD_SHARED_LIBS ${VECTORVOXEL_SHARED_LIBS})
-endif()
+# ---------------------------------------
+# -------- DECLARE MAIN LIBRARY ---------
+# ---------------------------------------
 
-set_if_undefined(CMAKE_CXX_VISIBILITY_PRESET hidden)
-set_if_undefined(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+set(SOURCES src/render.cpp src/screen.cpp)
 
-# --------------------------------------
-# ---------- DECLARE SOURCES -----------
-# --------------------------------------
+set(PUBLIC_HEADERS include/vectorvoxel/vectorvoxel.h)
 
+add_library(VectorVoxel ${SOURCES} ${PUBLIC_HEADERS})
+add_library(VectorVoxel::VectorVoxel ALIAS VectorVoxel)
+
+# Generate export.h
 include(GenerateExportHeader)
-
 generate_export_header(VectorVoxel EXPORT_FILE_NAME
                        include/vectorvoxel/export.h)
 
-set(public_headers include/vectorvoxel/export.h
-                   include/vectorvoxel/vectorvoxel.h)
-set(sources ${public_headers} src/render.cpp src/screen.cpp)
+# Add export.h to public headers of the main library
+set(PUBLIC_HEADERS ${PUBLIC_HEADERS}
+                   ${CMAKE_CURRENT_BINARY_DIR}/include/vectorvoxel/export.h)
 
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${sources})
+set_target_properties(VectorVoxel PROPERTIES PUBLIC_HEADER "${PUBLIC_HEADERS}")
 
-# -------------------------------------
-# ------ VECTORVOXEL TARGET -----------
-# -------------------------------------
-
-include(CMakePackageConfigHelpers)
-target_sources(VectorVoxel PRIVATE ${sources})
-target_compile_definitions(
-  VectorVoxel
-  PUBLIC "$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:VECTORVOXEL_STATIC_DEFINE")
+# Export only those symbols that uses VECTORVOXEL_EXPORT macros
+if(BUILD_SHARED_LIBS)
+  set_target_properties(VectorVoxel PROPERTIES CXX_VISIBILITY_PRESET hidden
+                                               VISIBILITY_INLINES_HIDDEN ON)
+endif()
 
 target_include_directories(
   VectorVoxel
-  PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-         "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
-         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
-  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  PUBLIC # For FetchContent
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+         # For find_package
+         $<INSTALL_INTERFACE:include>
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+if(NOT BUILD_SHARED_LIBS)
+  target_compile_definitions(VectorVoxel PUBLIC VECTORVOXEL_STATIC_DEFINE)
+endif()
 
 set_target_properties(
   VectorVoxel
-  PROPERTIES PUBLIC_HEADERS "${public_headers}"
-             VERSION ${PROJECT_VERSION}
-             SOVERSION ${PROJECT_VERSION_MAJOR})
+  PROPERTIES VERSION ${PROJECT_VERSION}
+             SOVERSION ${PROJECT_VERSION_MAJOR}
+             PUBLIC_HEADER "${PUBLIC_HEADERS}")
 
-# ----------------------
-# ----- INSTALL --------
-# ----------------------
+# ------------------------------------
+# ------------ INSTALL ---------------
+# ------------------------------------
 
-if(VECTORVOXEL_INSTALL AND NOT CMAKE_SKIP_INSTALL_RULES)
-  configure_package_config_file(
-    cmake/vectorvoxel-config.cmake.in vectorvoxel-config.cmake
-    INSTALL_DESTINATION "${VECTORVOXEL_INSTALL_CMAKEDIR}")
-  write_basic_package_version_file(vectorvoxel-config-version.cmake
-                                   COMPATIBILITY SameMajorVersion)
+if(PROJECT_IS_TOP_LEVEL AND NOT CMAKE_SKIP_INSTALL_RULES)
+  include(GNUInstallDirs)
+
+  # Install libraries and define headers for them
   install(
     TARGETS VectorVoxel
-    EXPORT VectorVoxelTargets
-    RUNTIME COMPONENT VectorVoxel
-    LIBRARY COMPONENT VectorVoxel NAMELINK_COMPONENT VectorVoxel-dev
-    ARCHIVE COMPONENT VectorVoxel-dev
-    PUBLIC_HEADER COMPONENT VectorVoxel-dev
-                  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/vectorvoxel")
+    EXPORT VectorVoxelTargets # For find_package
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} # .exe/.dll
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} # .so/.dynlib
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # .a/.lib
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vectorvoxel)
 
-  set(targets_file "vectorvoxel-shared-targets.cmake")
+  # Install header files
+  install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-  if(NOT BUILD_SHARED_LIBS)
-    set(targets_file "vectorvoxel-static-targets.cmake")
-  endif()
+  # -----------------------------------
+  # ------ INSTALL CMAKE CONFIG -------
+  # -----------------------------------
 
+  set(CONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/VectorVoxel")
+
+  # Install target for find_package
   install(
     EXPORT VectorVoxelTargets
-    COMPONENT VectorVoxel-dev
-    FILE "${targets_file}"
-    DESTINATION "${VECTORVOXEL_INSTALL_CMAKEDIR}"
-    NAMESPACE VectorVoxel::)
+    FILE VectorVoxelTargets.cmake
+    NAMESPACE VectorVoxel::
+    DESTINATION ${CONFIG_INSTALL_DIR})
 
-  install(
-    FILES "${CMAKE_CURRENT_BINARY_DIR}/vectorvoxel-config.cmake"
-          "${CMAKE_CURRENT_BINARY_DIR}/vectorvoxel-config-version.cmake"
-    COMPONENT VectorVoxel-dev
-    DESTINATION "${VECTORVOXEL_INSTALL_CMAKEDIR}")
+  # Generate CMake config
+  include(CMakePackageConfigHelpers)
+  configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VectorVoxelConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/VectorVoxelConfig.cmake
+    INSTALL_DESTINATION ${CONFIG_INSTALL_DIR})
 
+  # Generating version file
+  write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/VectorVoxelConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion)
+
+  # Install configuration
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/VectorVoxelConfig.cmake
+                ${CMAKE_CURRENT_BINARY_DIR}/VectorVoxelConfigVersion.cmake
+          DESTINATION ${CONFIG_INSTALL_DIR})
+
+  # -----------------------------------
+  # INSTALL PDB FILES (for Windows)
+  # -----------------------------------
   if(MSVC)
-    set(pdb_file "")
-    set(pdb_file_destination "")
-
     if(BUILD_SHARED_LIBS)
-      set(pdb_file "$<TARGET_PDB_FILE:vectorvoxel>")
-      set(pdb_file_destination "${CMAKE_INSTALL_BINDIR}")
+      install(
+        FILES $<TARGET_PDB_FILE:VectorVoxel>
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+        CONFIGURATIONS Debug RelWithDebInfo
+        OPTIONAL)
     else()
-      # TARGET_PDB_FILE does not work for pdb file generated by compiler during
-      # static library build, need to determine it another way
-      set(pdb_file
-          "$<TARGET_FILE_DIR:vectorvoxel>/$<TARGET_FILE_PREFIX:vectorvoxel>$<TARGET_FILE_BASE_NAME:vectorvoxel>.pdb"
-      )
-      set(pdb_file_destination "${CMAKE_INSTALL_LIBDIR}")
+      install(
+        FILES
+          $<TARGET_FILE_DIR:VectorVoxel>/$<TARGET_FILE_BASE_NAME:VectorVoxel>.pdb
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        CONFIGURATIONS Debug RelWithDebInfo
+        OPTIONAL)
     endif()
-
-    install(
-      FILES "${pdb_file}"
-      COMPONENT VectorVoxel-dev
-      CONFIGURATIONS Debug RelWithDebInfo
-      DESTINATION "${pdb_file_destination}"
-      OPTIONAL)
   endif()
 endif()

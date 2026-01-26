@@ -62,6 +62,9 @@ set(VECTORVOXEL_INSTALL
     CACHE BOOL "Sets whether library is going to be installed")
 
 add_subdirectory(src/core)
+if(VECTORVOXEL_BUILD_BASIC_BACKENDS)
+  add_subdirectory(src/backends/basic)
+endif()
 
 # ------------------------------------
 # ------------ INSTALL ---------------

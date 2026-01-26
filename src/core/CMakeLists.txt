@@ -16,14 +16,22 @@ set(INCLUDE
     "${VECTORVOXEL_INCLUDE_DIRECTORY}/core/terrain.h"
     "${CMAKE_CURRENT_BINARY_DIR}/include/vectorvoxel/core/export.h")
 
-target_sources(vectorvoxel_core PRIVATE ${SOURCES} ${HEADERS})
+target_sources(
+  vectorvoxel_core
+  PRIVATE ${SOURCES} ${HEADERS}
+  PUBLIC FILE_SET
+         HEADERS
+         BASE_DIRS
+         ${VECTORVOXEL_INCLUDE_DIRECTORY}/..
+         ${CMAKE_CURRENT_BINARY_DIR}/include
+         FILES
+         ${INCLUDE})
 set_target_properties(
   vectorvoxel_core
   PROPERTIES VERSION ${PROJECT_VERSION}
              SOVERSION ${PROJECT_VERSION_MAJOR}
              CXX_STANDARD 17
-             CXX_STANDARD_REQUIRED ON
-             PUBLIC_HEADER "${INCLUDE}")
+             CXX_STANDARD_REQUIRED ON)
 
 if(BUILD_SHARED_LIBS)
   set_target_properties(
@@ -56,10 +64,10 @@ if(VECTORVOXEL_INSTALL)
   install(
     TARGETS vectorvoxel_core
     EXPORT VectorVoxelTargets
+    FILE_SET HEADERS
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vectorvoxel/core)
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/include/vectorvoxel/core/export.h
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vectorvoxel/core)
 

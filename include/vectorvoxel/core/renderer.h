@@ -12,7 +12,7 @@
 namespace VectorVoxel {
 class VECTORVOXEL_CORE_EXPORT Renderer {
 public:
-  Viewport &viewport;
+  const Viewport &viewport;
   Renderer(const Viewport &viewport);
   ~Renderer();
 
@@ -25,11 +25,13 @@ public:
   void clearBackends();
   const std::vector<std::shared_ptr<Backend>> &getBackends();
 
-  std::vector<uint32_t> getLastBuffer();
+  std::vector<uint32_t> getLastBuffer() const { return last_frame; };
 
 private:
   std::vector<uint32_t> renderVoxelSpace(const TerrainMap &terrain,
                                          const Camera &Camera);
+
+  std::vector<uint32_t> last_frame;
 
   class Impl;
   std::unique_ptr<Impl> impl;

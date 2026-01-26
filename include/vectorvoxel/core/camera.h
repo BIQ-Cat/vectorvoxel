@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cmath>
+#include <math.h>
 #include <vectorvoxel/core/export.h>
 
 namespace VectorVoxel {
@@ -31,6 +31,7 @@ struct VECTORVOXEL_CORE_EXPORT Camera {
 
   void moveForward(float perc_speed);
   void strafe(float perc_speed);
-  void rotate(float perc_speed);
+  void rotate(float perc_speed_yaw, float perc_speed_pitch);
+  void fly(float perc_speed) { position.z += movement.velocity * perc_speed; };
 };
 } // namespace VectorVoxel

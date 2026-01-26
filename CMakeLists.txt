@@ -11,6 +11,7 @@ project(
 
 # Basic options
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Modules
 option(VECTORVOXEL_BUILD_EXAMPLES "Build examples" OFF)
@@ -69,9 +70,6 @@ add_subdirectory(src/core)
 if(VECTORVOXEL_INSTALL)
   include(GNUInstallDirs)
 
-  # Install header files
-  install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
   # -----------------------------------
   # ------ INSTALL CMAKE CONFIG -------
   # -----------------------------------
@@ -103,7 +101,4 @@ if(VECTORVOXEL_INSTALL)
                 ${CMAKE_CURRENT_BINARY_DIR}/VectorVoxelConfigVersion.cmake
           DESTINATION ${CONFIG_INSTALL_DIR})
 
-  # -----------------------------------
-  # INSTALL PDB FILES (for Windows)
-  # -----------------------------------
 endif()

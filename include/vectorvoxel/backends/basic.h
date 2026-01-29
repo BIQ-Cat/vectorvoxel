@@ -30,7 +30,7 @@ public:
   bool isReady() override { return true; }
 
   std::vector<uint32_t> getLastFrame() { return last_frame; }
-  void saveToFile(std::string filename);
+  void saveToBMP(std::string filename);
 
 private:
   std::vector<uint32_t> last_frame;

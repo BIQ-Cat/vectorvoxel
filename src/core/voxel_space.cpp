@@ -21,18 +21,20 @@ public:
   std::unique_ptr<ThreadPool> thread_pool;
   std::size_t num_threads;
 
+  std::shared_ptr<TerrainMap> terrain;
+  std::vector<uint8_t> gray_LUT;
+
   void initializeThreadPool() {
-    num_threads = std::max(1u, std::thread::hardware_concurrency());
+    auto num_threads = std::max(1u, std::thread::hardware_concurrency());
 
 #ifdef __EMSCRIPTEN__
     num_threads = std::min(4u, num_threads);
 #endif
 
-    thread_pool = std::make_unique<ThreadPool>(num_threads - 1);
+    thread_pool = std::make_unique<ThreadPool>(std::max(1u, num_threads - 1));
   }
 
-  void castRay(double ray_angle, const TerrainMap &terrain,
-               const Camera &camera, uint32_t *buffer_start) {
+  void castRay(double ray_angle, const Camera &camera, uint32_t *buffer_start) {
     double sin = std::sin(ray_angle);
     double cos = std::cos(ray_angle);
 
@@ -42,8 +44,8 @@ public:
       int y = i * sin + camera.position.y;
       int x = i * cos + camera.position.x;
 
-      if (!terrain.coords_are_valid(x, y)) {
-        if (x >= terrain.width || y >= terrain.height)
+      if (!terrain->coords_are_valid(x, y)) {
+        if (x >= terrain->width || y >= terrain->height)
           break;
 
         continue;
@@ -51,19 +53,18 @@ public:
 
       double normal = i * std::cos(camera.orientation.yaw - ray_angle);
 
-      auto terrain_index = terrain.coords_to_index(x, y);
-      int height = (camera.position.z - terrain.height_map[terrain_index]) /
-                       normal * terrain.scale_height_ratio +
+      auto terrain_index = terrain->coords_to_index(x, y);
+      int height = (camera.position.z - terrain->height_map[terrain_index]) /
+                       normal * terrain->scale_height_ratio +
                    camera.orientation.pitch_ox;
 
       height = std::max(height, 0);
 
       if (height < smallest_y) {
         for (int screen_y = height; screen_y < smallest_y; ++screen_y) {
-          uint32_t color = terrain.texture[terrain_index];
-          if (terrain.should_light_up) {
-            uint8_t gray =
-                terrain.height_map[terrain_index] * 255 / terrain.max_height;
+          uint32_t color = terrain->texture[terrain_index];
+          if (terrain->should_light_up) {
+            uint8_t gray = gray_LUT[terrain->height_map[terrain_index]];
 
             uint8_t a = 0xFF;
             uint8_t r = (color >> 16) & 0xFF;
@@ -95,6 +96,20 @@ void Renderer::setViewport(Viewport viewport) {
   impl->ray_distance = viewport.ray_distance;
 }
 
+void Renderer::setTerrainMap(std::shared_ptr<TerrainMap> terrain) {
+  setTerrainMap(terrain, *std::max_element(terrain->height_map.cbegin(),
+                                           terrain->height_map.cend()));
+}
+
+void Renderer::setTerrainMap(std::shared_ptr<TerrainMap> terrain,
+                             uint32_t height_cap) {
+  impl->terrain = terrain;
+  impl->gray_LUT = std::vector<uint8_t>(height_cap);
+  for (uint32_t h{}; h < height_cap; ++h) {
+    impl->gray_LUT[h] = 255 * h / height_cap;
+  }
+}
+
 void Renderer::addBackend(std::shared_ptr<Backend> backend) {
   if (backend && backend->isReady()) {
     impl->backends.push_back(backend);
@@ -113,40 +128,41 @@ const std::vector<std::shared_ptr<Backend>> &Renderer::getBackends() {
   return impl->backends;
 }
 
-std::vector<uint32_t> Renderer::renderToBuffer(const TerrainMap &terrain,
-                                               const Camera &camera) {
+std::vector<uint32_t> Renderer::renderToBuffer(const Camera &camera) {
   auto size = viewport.width * viewport.height;
   std::vector<uint32_t> pixels(size, 0xFF000000);
 
   static std::once_flag init_pool_flag;
   std::call_once(init_pool_flag, [this]() { impl->initializeThreadPool(); });
 
-  double start_angle = camera.orientation.yaw - (viewport.fov_rad / 2);
-  double delta_angle = viewport.fov_rad / viewport.width;
+  if (impl->terrain) {
+    double start_angle = camera.orientation.yaw - (viewport.fov_rad / 2);
+    double delta_angle = viewport.fov_rad / viewport.width;
 
-  std::vector<double> ray_angles(viewport.width);
-  for (int x{}; x < viewport.width; ++x) {
-    ray_angles[x] = start_angle + delta_angle * x;
+    std::vector<double> ray_angles(viewport.width);
+    for (int x{}; x < viewport.width; ++x) {
+      ray_angles[x] = start_angle + delta_angle * x;
+    }
+
+    int chunk_size = std::max(1, viewport.width / (int)impl->num_threads / 2);
+    for (int chunk_start{}; chunk_start < viewport.width;
+         chunk_start += chunk_size) {
+      int chunk_end = std::min(chunk_start + chunk_size, viewport.width);
+      impl->thread_pool->enqueue(
+          [this, chunk_start, chunk_end, &camera, &ray_angles, &pixels]() {
+            for (int x = chunk_start; x < chunk_end; ++x) {
+              impl->castRay(ray_angles[x], camera, &pixels[x]);
+            }
+          });
+    }
+
+    impl->thread_pool->wait_all();
   }
-
-  int chunk_size = std::max(1, viewport.width / (int)impl->num_threads / 2);
-  for (int chunk_start{}; chunk_start < viewport.width;
-       chunk_start += chunk_size) {
-    int chunk_end = std::min(chunk_start + chunk_size, viewport.width);
-    impl->thread_pool->enqueue([this, chunk_start, chunk_end, &terrain, &camera,
-                                &ray_angles, &pixels]() {
-      for (int x = chunk_start; x < chunk_end; ++x) {
-        impl->castRay(ray_angles[x], terrain, camera, &pixels[x]);
-      }
-    });
-  }
-
-  impl->thread_pool->wait_all();
   return pixels;
 }
 
-void Renderer::renderFrame(const TerrainMap &terrain, const Camera &camera) {
-  std::vector<uint32_t> frame = renderToBuffer(terrain, camera);
+void Renderer::renderFrame(const Camera &camera) {
+  std::vector<uint32_t> frame = renderToBuffer(camera);
   last_frame = frame;
 
   for (auto &backend : impl->backends) {

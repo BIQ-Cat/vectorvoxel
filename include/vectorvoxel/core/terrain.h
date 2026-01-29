@@ -14,7 +14,6 @@ struct VECTORVOXEL_CORE_EXPORT TerrainMap {
   int height;
 
   double scale_height_ratio;
-  uint32_t max_height;
 
   bool should_light_up;
 

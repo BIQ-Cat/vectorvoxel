@@ -20,14 +20,20 @@ option(VECTORVOXEL_BUILD_TESTS "Build tests" OFF)
 # Backends
 option(VECTORVOXEL_BUILD_BASIC_BACKENDS "Include basic backends in build" ON)
 option(VECTORVOXEL_BUILD_SDL_BACKEND
-       "Include SDL backend in build (requires SDL2)" OFF)
+       "Include SDL backend in build (requires SDL2)" ON)
 option(VECTORVOXEL_BUILD_QT_BACKEND
        "Include Qt backend in build (requires Qt6)" OFF)
 
 # Emscripten
-set(VECTORVOXEL_MODE_WEB
-    ${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten"
-    CACHE BOOL "Enable Emscripten mode")
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  set(VECTORVOXEL_MODE_WEB
+      TRUE
+      CACHE BOOL "Enable Emscripten mode")
+else()
+  set(VECTORVOXEL_MODE_WEB
+      FALSE
+      CACHE BOOL "Enable Emscripten mode")
+endif()
 
 if(VECTORVOXEL_MODE_WEB)
   message(STATUS "Emscripten mode enabled - forcing static build")
@@ -64,6 +70,9 @@ set(VECTORVOXEL_INSTALL
 add_subdirectory(src/core)
 if(VECTORVOXEL_BUILD_BASIC_BACKENDS)
   add_subdirectory(src/backends/basic)
+endif()
+if(VECTORVOXEL_BUILD_SDL_BACKEND)
+  add_subdirectory(src/backends/sdl)
 endif()
 
 # ------------------------------------

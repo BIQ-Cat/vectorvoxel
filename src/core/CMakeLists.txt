@@ -42,7 +42,7 @@ endif()
 target_include_directories(
   vectorvoxel_core
   PUBLIC # For FetchContent
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<BUILD_INTERFACE:${VECTORVOXEL_INCLUDE_DIRECTORY}/..>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
          # For find_package
          $<INSTALL_INTERFACE:include>

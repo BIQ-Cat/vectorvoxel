@@ -2,12 +2,13 @@ file(GLOB_RECURSE SOURCES *.cpp)
 file(GLOB_RECURSE HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 
 add_library(vectorvoxel_backends_basic)
-add_library(VectorVoxel::BackendsBasic ALIAS vectorvoxel_backends_basic)
+add_library(VectorVoxel::Backends::Basic ALIAS vectorvoxel_backends_basic)
 
 include(GenerateExportHeader)
 generate_export_header(
-  vectorvoxel_core EXPORT_FILE_NAME include/vectorvoxel/backends/export_basic.h
-  EXPORT_MACRO_NAME VECTORVOXEL_BACKENDS_BASIC_EXPORT)
+  vectorvoxel_backends_basic EXPORT_FILE_NAME
+  include/vectorvoxel/backends/export_basic.h EXPORT_MACRO_NAME
+  VECTORVOXEL_BACKENDS_BASIC_EXPORT)
 
 set(INCLUDE
     "${VECTORVOXEL_INCLUDE_DIRECTORY}/backends/basic.h"
@@ -42,7 +43,7 @@ endif()
 target_include_directories(
   vectorvoxel_backends_basic
   PUBLIC # For FetchContent
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<BUILD_INTERFACE:${VECTORVOXEL_INCLUDE_DIRECTORY}/..>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
          # For find_package
          $<INSTALL_INTERFACE:include>

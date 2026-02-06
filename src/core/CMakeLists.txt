@@ -14,6 +14,7 @@ set(INCLUDE
     "${VECTORVOXEL_INCLUDE_DIRECTORY}/core/backend.h"
     "${VECTORVOXEL_INCLUDE_DIRECTORY}/core/camera.h"
     "${VECTORVOXEL_INCLUDE_DIRECTORY}/core/terrain.h"
+    "${VECTORVOXEL_INCLUDE_DIRECTORY}/core/voxel.h"
     "${CMAKE_CURRENT_BINARY_DIR}/include/vectorvoxel/core/export.h")
 
 target_sources(
@@ -37,6 +38,11 @@ if(BUILD_SHARED_LIBS)
   set_target_properties(
     vectorvoxel_core PROPERTIES CXX_VISIBILITY hidden VISIBILITY_INLINES_HIDDEN
                                                       ON)
+endif()
+
+if(VECTORVOXEL_MODE_WEB)
+  target_compile_options(vectorvoxel_core PRIVATE -pthread)
+  target_link_options(vectorvoxel_core PRIVATE -pthread -s USE_PTHREAD=1)
 endif()
 
 target_include_directories(

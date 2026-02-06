@@ -22,7 +22,6 @@ public:
   std::size_t num_threads;
 
   std::shared_ptr<TerrainMap> terrain;
-  std::vector<uint8_t> gray_LUT;
 
   void initializeThreadPool() {
     auto num_threads = std::max(1u, std::thread::hardware_concurrency());
@@ -45,26 +44,24 @@ public:
       int x = i * cos + camera.position.x;
 
       if (!terrain->coords_are_valid(x, y)) {
-        if (x >= terrain->width || y >= terrain->height)
-          break;
-
         continue;
       }
 
       double normal = i * std::cos(camera.orientation.yaw - ray_angle);
 
-      auto terrain_index = terrain->coords_to_index(x, y);
-      int height = (camera.position.z - terrain->height_map[terrain_index]) /
-                       normal * terrain->scale_height_ratio +
-                   camera.orientation.pitch_ox;
+      uint32_t pixel_height = terrain->get_height(x, y);
+      uint32_t pixel_color = terrain->get_color_of(x, y);
+      int height =
+          (terrain->scaleHeight(camera.position.z - pixel_height) / normal) +
+          camera.orientation.pitch_ox;
 
       height = std::max(height, 0);
 
       if (height < smallest_y) {
         for (int screen_y = height; screen_y < smallest_y; ++screen_y) {
-          uint32_t color = terrain->texture[terrain_index];
-          if (terrain->should_light_up) {
-            uint8_t gray = gray_LUT[terrain->height_map[terrain_index]];
+          uint32_t color = pixel_color;
+          if (!terrain->isHighlighted()) {
+            uint8_t gray = terrain->getGrayTypeOf(pixel_height).value();
 
             uint8_t a = 0xFF;
             uint8_t r = (color >> 16) & 0xFF;
@@ -97,17 +94,12 @@ void Renderer::setViewport(Viewport viewport) {
 }
 
 void Renderer::setTerrainMap(std::shared_ptr<TerrainMap> terrain) {
-  setTerrainMap(terrain, *std::max_element(terrain->height_map.cbegin(),
-                                           terrain->height_map.cend()));
+  setTerrainMap(terrain, terrain->height_max());
 }
 
 void Renderer::setTerrainMap(std::shared_ptr<TerrainMap> terrain,
                              uint32_t height_cap) {
   impl->terrain = terrain;
-  impl->gray_LUT = std::vector<uint8_t>(height_cap);
-  for (uint32_t h{}; h < height_cap; ++h) {
-    impl->gray_LUT[h] = 255 * h / height_cap;
-  }
 }
 
 void Renderer::addBackend(std::shared_ptr<Backend> backend) {

@@ -1,39 +1,10 @@
+#include "vectorvoxel/core/file_headers.h"
 #include <cstdint>
 #include <fstream>
 #include <ios>
 #include <string>
 #include <vector>
 #include <vectorvoxel/backends/basic.h>
-
-#ifdef __EMSCRIPTEN__
-#define PACKED_STRUCT __attribute__((packed))
-#elif defined(_MSC_VER)
-#define PACKED_STRUCT __pragma(pack(push, 1)) struct __pragma(pack(pop))
-#else
-#define PACKED_STRUCT __attribute__((packed))
-#endif
-
-struct PACKED_STRUCT BMPFileHeader {
-  uint16_t signature = 0x4D42; // BM
-  uint32_t fileSize;
-  uint16_t reserved1;
-  uint16_t reserved2;
-  uint32_t dataOffset;
-};
-
-struct PACKED_STRUCT BMPInfoHeader {
-  uint32_t headerSize;
-  int32_t width;
-  int32_t height;
-  uint16_t planes = 1;
-  uint16_t bitsPerPixel = 32;
-  uint32_t compression = 0;
-  uint32_t imageSize = 0;
-  int32_t xPixelsPerMeter = 0;
-  int32_t yPixelsPerMeter = 0;
-  uint32_t colorsUsed = 0;
-  uint32_t colorsImportant = 0;
-};
 
 namespace VectorVoxel::Backends {
 void SimpleBackend::saveToBMP(std::string filename) {
@@ -56,19 +27,20 @@ void SimpleBackend::saveToBMP(std::string filename) {
     }
   }
 
-  BMPFileHeader fileHeader = {};
-  fileHeader.fileSize =
-      sizeof(BMPFileHeader) + sizeof(BMPInfoHeader) + data_size;
-  fileHeader.dataOffset = sizeof(BMPFileHeader) + sizeof(BMPInfoHeader);
+  NTBMPFileHeader file_header = {};
+  file_header.file_size =
+      sizeof(NTBMPFileHeader) + sizeof(NTBMPInfoHeader) + data_size;
+  file_header.offset = sizeof(NTBMPFileHeader) + sizeof(NTBMPInfoHeader);
 
-  BMPInfoHeader infoHeader = {};
-  infoHeader.headerSize = sizeof(BMPInfoHeader);
-  infoHeader.width = last_width;
-  infoHeader.height = last_height;
+  NTBMPInfoHeader info_header = {};
+  info_header.bits_per_pixel = 32;
+  info_header.header_size = sizeof(NTBMPInfoHeader);
+  info_header.bitmap_width = last_width;
+  info_header.bitmap_height = last_height;
 
   std::ofstream file(filename, std::ios::binary);
-  file.write(reinterpret_cast<char *>(&fileHeader), sizeof(fileHeader));
-  file.write(reinterpret_cast<char *>(&infoHeader), sizeof(infoHeader));
+  file.write(reinterpret_cast<char *>(&file_header), sizeof(file_header));
+  file.write(reinterpret_cast<char *>(&info_header), sizeof(info_header));
   file.write(reinterpret_cast<char *>(data.data()), data_size);
 }
 } // namespace VectorVoxel::Backends

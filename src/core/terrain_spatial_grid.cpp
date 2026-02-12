@@ -3,16 +3,12 @@
 
 namespace VectorVoxel {
 void TerrainMap::GridCell::add(TerrainOverlay *overlay) {
-  auto it = overlays.begin();
-  while (it != overlays.end() && (*it) < overlay) {
-    ++it;
-  }
 
-  overlays.insert(it, overlay);
+  overlays.insert(overlay);
 }
 
 void TerrainMap::GridCell::remove(TerrainOverlay *overlay) {
-  overlays.remove(overlay);
+  overlays.erase(overlay);
 }
 
 void TerrainMap::addOverlayToGrid(TerrainOverlay *overlay) {
@@ -37,8 +33,17 @@ void TerrainMap::removeOverlayFromGrid(TerrainOverlay *overlay) {
   if (!overlay)
     return;
 
-  for (auto &cell : spatial_grid) {
-    cell.remove(overlay);
+  int cell_x1 = overlay->get_x() / grid_cell_size;
+  int cell_y1 = overlay->get_y() / grid_cell_size;
+  int cell_x2 = std::min((overlay->get_x() + overlay->width) / grid_cell_size,
+                         grid_width - 1);
+  int cell_y2 = std::min((overlay->get_y() + overlay->height) / grid_cell_size,
+                         grid_height - 1);
+
+  for (int y = cell_y1; y <= cell_y2; ++y) {
+    for (int x = cell_x1; x <= cell_x2; ++x) {
+      spatial_grid[y * grid_width + x].remove(overlay);
+    }
   }
 }
 

@@ -6,8 +6,7 @@ TerrainOverlay::TerrainOverlay(std::vector<uint32_t> height_map,
                                int height, int x, int y, bool is_enabled)
     : VoxelObject(height_map, texture, width, height), x(x), y(y),
       enabled(is_enabled), original_height_map(height_map),
-      original_texture(texture), height_diffs(width * height, 0),
-      underlying_colors(width * height, 0) {};
+      original_texture(texture), height_diffs(width * height, 0) {};
 
 void TerrainOverlay::modifyHeight(int x, int y, uint32_t height) {
   if (!coords_are_valid(x, y))
@@ -98,8 +97,7 @@ void TerrainOverlay::rejectChanges() {
     }
   }
 
-  // Cannot change DirtyRegion: there can be unrejectable changes from
-  // TerrainMap
+  dirty_region = DirtyRegion{};
   colors_changed = false;
   marked_for_removal = false;
   enabled = original_enabled;
@@ -120,6 +118,7 @@ void TerrainOverlay::clearDirtyState() {
 
   dirty_region = DirtyRegion{};
   colors_changed = false;
+  marked_for_removal = false;
   original_enabled = enabled;
 }
 
@@ -127,5 +126,12 @@ void TerrainOverlay::markDirty(int x, int y) { dirty_region.expand(x, y); }
 
 void TerrainOverlay::markDirtyArea(int x, int y, int w, int h) {
   dirty_region.expand(x, y, w, h);
+}
+
+void TerrainOverlay::markDirtyFixed(int w, int h) {
+  fixed_dirty_region.expand(x, y);
+}
+void TerrainOverlay::markDirtyAreaFixed(int x, int y, int w, int h) {
+  fixed_dirty_region.expand(x, y, w, h);
 }
 } // namespace VectorVoxel

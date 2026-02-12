@@ -58,7 +58,12 @@ void TerrainMap::processDirtyRegion(const DirtyRegion &region) {
   auto overlays_in_region =
       getOverlapsInRegion(region.x1, region.y1, region.x2, region.y2);
 
-  bool colors_changed = false;
+  for (int x = region.x1; x < region.x2; ++x) {
+    for (int y = region.y1; y < region.y2; ++y) {
+      texture[y * width + x] = base_texture[y * width + x];
+    }
+  }
+
   for (auto overlay : overlays_in_region) {
     int ox1 = std::max(region.x1 - overlay->get_x(), 0);
     int oy1 = std::max(region.y1 - overlay->get_y(), 0);
@@ -73,27 +78,26 @@ void TerrainMap::processDirtyRegion(const DirtyRegion &region) {
         int overlay_idx = y * overlay->width + x;
         int map_idx = (overlay->get_y() + y) * width + (overlay->get_x() + x);
 
-        if (overlay->needsEnabling()) {
+        if (overlay->needsEnabling() || !overlay->is_tied) {
           height_map[map_idx] += overlay->height_map[overlay_idx];
         } else if (overlay->needsDisabling()) {
           height_map[map_idx] -= overlay->height_map[overlay_idx];
-        } else if (overlay->enabled) {
+        } else if (overlay->isEnabled()) {
           height_map[map_idx] += overlay->height_diffs[overlay_idx];
         }
 
-        if (colors_changed) {
-          overlay->underlying_colors[overlay_idx] = texture[map_idx];
+        if (height_map[map_idx] > max_height) {
+          max_height = height_map[map_idx];
         }
-        if (overlay->needsDisabling() || overlay->needsColorUpdate()) {
-          texture[map_idx] = overlay->underlying_colors[overlay_idx];
-          if (overlay->needsColorUpdate()) {
-            texture[map_idx] =
-                blend(overlay->texture[overlay_idx], texture[map_idx]);
-          }
-          colors_changed = true;
+
+        if (overlay->isEnabled() && !overlay->needsDisabling()) {
+          texture[map_idx] =
+              blend(overlay->texture[overlay_idx], texture[map_idx]);
         }
       }
     }
+
+    overlay->is_tied = true;
   }
 }
 
@@ -101,6 +105,7 @@ void TerrainMap::removeMarkedOverlays() {
   auto it = overlays.begin();
   while (it != overlays.end()) {
     if ((*it)->isMarkedForRemoval()) {
+      (*it)->is_tied = false;
       removeOverlayFromGrid(it->get());
       it = overlays.erase(it);
     } else {

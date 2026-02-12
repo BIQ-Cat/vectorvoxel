@@ -15,6 +15,7 @@ set(INCLUDE
     "${VECTORVOXEL_INCLUDE_DIRECTORY}/core/camera.h"
     "${VECTORVOXEL_INCLUDE_DIRECTORY}/core/terrain.h"
     "${VECTORVOXEL_INCLUDE_DIRECTORY}/core/voxel.h"
+    "${VECTORVOXEL_INCLUDE_DIRECTORY}/core/file_headers.h"
     "${CMAKE_CURRENT_BINARY_DIR}/include/vectorvoxel/core/export.h")
 
 target_sources(

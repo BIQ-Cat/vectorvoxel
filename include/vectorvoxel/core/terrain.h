@@ -8,6 +8,7 @@
 #include <list>
 #include <memory>
 #include <optional>
+#include <set>
 #include <vectorvoxel/core/export.h>
 
 namespace VectorVoxel {
@@ -64,10 +65,6 @@ public:
   int get_x() const { return x; }
   int get_y() const { return y; }
 
-  const std::vector<TerrainOverlay *> &getColidingOverlays() const {
-    return coliding_overlays;
-  }
-
   void markForRemoval();
 
   bool isMarkedForRemoval() const { return marked_for_removal; }
@@ -77,7 +74,12 @@ public:
   bool needsEnabling() const { return enabled && !original_enabled; }
   bool needsDisabling() const { return !enabled && original_enabled; }
 
-  const DirtyRegion &getDirtyRegion() const { return dirty_region; }
+  DirtyRegion getDirtyRegion() const {
+    DirtyRegion res;
+    res.merge(dirty_region);
+    res.merge(fixed_dirty_region);
+    return res;
+  }
   const std::vector<int64_t> &getHeightDifferences() const {
     return height_diffs;
   }
@@ -94,10 +96,8 @@ private:
   int x;
   int y;
 
-  std::vector<TerrainOverlay *> coliding_overlays;
-
-  size_t z_index = -1;
-  size_t id = -1;
+  size_t z_index = SIZE_MAX;
+  size_t id = SIZE_MAX;
   bool goesBefore(size_t z_index, size_t id) {
     return this->z_index < z_index ||
            (this->z_index == z_index && this->id < id);
@@ -105,13 +105,17 @@ private:
 
   bool enabled = true;
   bool marked_for_removal = false;
+  bool is_tied = false;
 
   bool colors_changed = false;
   std::vector<int64_t> height_diffs;
 
   DirtyRegion dirty_region;
+  DirtyRegion fixed_dirty_region;
   void markDirty(int x, int y);
   void markDirtyArea(int x, int y, int w, int h);
+  void markDirtyFixed(int x, int y);
+  void markDirtyAreaFixed(int x, int y, int w, int h);
 
   void clearDirtyState();
 
@@ -153,6 +157,8 @@ public:
   }
 
 private:
+  std::vector<uint32_t> base_texture;
+
   int scale_height_ratio;
   bool highlighted;
 
@@ -165,7 +171,7 @@ private:
   std::list<std::shared_ptr<TerrainOverlay>> overlays;
 
   struct GridCell {
-    std::list<TerrainOverlay *> overlays;
+    std::set<TerrainOverlay *> overlays;
 
     void add(TerrainOverlay *overlay);
     void remove(TerrainOverlay *overlay);

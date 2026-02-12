@@ -49,7 +49,7 @@ public:
 
       double normal = i * std::cos(camera.orientation.yaw - ray_angle);
 
-      uint32_t pixel_height = terrain->get_height(x, y);
+      uint32_t pixel_height = terrain->get_height_of(x, y);
       uint32_t pixel_color = terrain->get_color_of(x, y);
       int height =
           (terrain->scaleHeight(camera.position.z - pixel_height) / normal) +

@@ -17,7 +17,7 @@ public:
     return x >= 0 && y >= 0 && x < width && y < height;
   }
 
-  uint32_t get_height(int x, int y) const {
+  uint32_t get_height_of(int x, int y) const {
     if (coords_are_valid(x, y))
       return height_map[y * width + x];
     else
@@ -47,4 +47,8 @@ protected:
   int width;
   int height;
 };
+
+std::vector<uint32_t> loadTextureFromTGA(std::string filename);
+// std::vector<uint32_t> loadHeightMapFromHMP(std::string filename);
+// std::vector<uint32_t> loadHeightMapFromBMP(std::string filename);
 } // namespace VectorVoxel

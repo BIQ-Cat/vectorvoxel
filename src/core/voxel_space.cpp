@@ -4,13 +4,14 @@
 #include "vectorvoxel/core/terrain.h"
 
 #include <algorithm>
-#include <cmath>
 #include <cstdint>
-#include <math.h>
 #include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
+
+#define _USE_MATH_DEFINES
+#include <cmath>
 
 namespace VectorVoxel {
 class Renderer::Impl {

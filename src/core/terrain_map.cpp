@@ -1,5 +1,3 @@
-#pragma once
-
 #include "vectorvoxel/core/terrain.h"
 #include <algorithm>
 #include <cstddef>

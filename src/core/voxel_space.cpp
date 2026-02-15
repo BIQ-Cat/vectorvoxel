@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <math.h>
 #include <memory>
 #include <mutex>
 #include <thread>

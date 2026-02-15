@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.23)
 project(
   VectorVoxel
-  VERSION 1.0.0
+  VERSION 2.0.0
   DESCRIPTION "3D engine that combines vector and voxel approach"
   LANGUAGES CXX)
 
@@ -9,75 +9,78 @@ project(
 # ----------- BASIC OPTIONS --------------
 # ----------------------------------------
 
+# Basic options
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Modules
 option(VECTORVOXEL_BUILD_EXAMPLES "Build examples" OFF)
 option(VECTORVOXEL_BUILD_TESTS "Build tests" OFF)
 
-# ---------------------------------------
-# -------- DECLARE MAIN LIBRARY ---------
-# ---------------------------------------
+# Backends
+option(VECTORVOXEL_BUILD_BASIC_BACKENDS "Include basic backends in build" ON)
+option(VECTORVOXEL_BUILD_SDL_BACKEND
+       "Include SDL backend in build (requires SDL2)" ON)
+option(VECTORVOXEL_BUILD_QT_BACKEND
+       "Include Qt backend in build (requires Qt6)" OFF)
 
-set(SOURCES src/render.cpp src/screen.cpp)
-
-set(PUBLIC_HEADERS include/vectorvoxel/vectorvoxel.h)
-
-add_library(VectorVoxel ${SOURCES} ${PUBLIC_HEADERS})
-add_library(VectorVoxel::VectorVoxel ALIAS VectorVoxel)
-
-# Generate export.h
-include(GenerateExportHeader)
-generate_export_header(VectorVoxel EXPORT_FILE_NAME
-                       include/vectorvoxel/export.h)
-
-# Add export.h to public headers of the main library
-set(PUBLIC_HEADERS ${PUBLIC_HEADERS}
-                   ${CMAKE_CURRENT_BINARY_DIR}/include/vectorvoxel/export.h)
-
-set_target_properties(VectorVoxel PROPERTIES PUBLIC_HEADER "${PUBLIC_HEADERS}")
-
-# Export only those symbols that uses VECTORVOXEL_EXPORT macros
-if(BUILD_SHARED_LIBS)
-  set_target_properties(VectorVoxel PROPERTIES CXX_VISIBILITY_PRESET hidden
-                                               VISIBILITY_INLINES_HIDDEN ON)
+# Emscripten
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  set(VECTORVOXEL_MODE_WEB
+      TRUE
+      CACHE BOOL "Enable Emscripten mode")
+else()
+  set(VECTORVOXEL_MODE_WEB
+      FALSE
+      CACHE BOOL "Enable Emscripten mode")
 endif()
 
-target_include_directories(
-  VectorVoxel
-  PUBLIC # For FetchContent
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-         # For find_package
-         $<INSTALL_INTERFACE:include>
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+if(VECTORVOXEL_MODE_WEB)
+  message(STATUS "Emscripten mode enabled - forcing static build")
+  if(BUILD_SHARED_LIBS)
+    message(
+      WARNING
+        "Emscripten: shared libraries are not supported. Forcing to build static"
+    )
+    set(BUILD_SHARED_LIBS
+        OFF
+        CACHE BOOL "Build shared libraries" FORCE)
+  endif()
 
-if(NOT BUILD_SHARED_LIBS)
-  target_compile_definitions(VectorVoxel PUBLIC VECTORVOXEL_STATIC_DEFINE)
+  if(VECTORVOXEL_BUILD_QT_BACKEND)
+    message(
+      WARNING "Emscripten: Qt framework is not supported. Disabling Qt backend")
+    set(VECTORVOXEL_BUILD_QT_BACKEND
+        OFF
+        CACHE BOOL "Qt disabled for Emscripten" FORCE)
+  endif()
 endif()
 
-set_target_properties(
-  VectorVoxel
-  PROPERTIES VERSION ${PROJECT_VERSION}
-             SOVERSION ${PROJECT_VERSION_MAJOR}
-             PUBLIC_HEADER "${PUBLIC_HEADERS}")
+# ---------------------------------------
+# -------- DECLARE LIBRARIES ------------
+# ---------------------------------------
+
+set(VECTORVOXEL_INCLUDE_DIRECTORY
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/vectorvoxel"
+    CACHE PATH "Directory with header files")
+set(VECTORVOXEL_INSTALL
+    (${PROJECT_IS_TOP_LEVEL} AND NOT ${CMAKE_SKIP_INSTALL_RULES})
+    CACHE BOOL "Sets whether library is going to be installed")
+
+add_subdirectory(src/core)
+if(VECTORVOXEL_BUILD_BASIC_BACKENDS)
+  add_subdirectory(src/backends/basic)
+endif()
+if(VECTORVOXEL_BUILD_SDL_BACKEND)
+  add_subdirectory(src/backends/sdl)
+endif()
 
 # ------------------------------------
 # ------------ INSTALL ---------------
 # ------------------------------------
 
-if(PROJECT_IS_TOP_LEVEL AND NOT CMAKE_SKIP_INSTALL_RULES)
+if(VECTORVOXEL_INSTALL)
   include(GNUInstallDirs)
-
-  # Install libraries and define headers for them
-  install(
-    TARGETS VectorVoxel
-    EXPORT VectorVoxelTargets # For find_package
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} # .exe/.dll
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} # .so/.dynlib
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # .a/.lib
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vectorvoxel)
-
-  # Install header files
-  install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
   # -----------------------------------
   # ------ INSTALL CMAKE CONFIG -------
@@ -110,23 +113,4 @@ if(PROJECT_IS_TOP_LEVEL AND NOT CMAKE_SKIP_INSTALL_RULES)
                 ${CMAKE_CURRENT_BINARY_DIR}/VectorVoxelConfigVersion.cmake
           DESTINATION ${CONFIG_INSTALL_DIR})
 
-  # -----------------------------------
-  # INSTALL PDB FILES (for Windows)
-  # -----------------------------------
-  if(MSVC)
-    if(BUILD_SHARED_LIBS)
-      install(
-        FILES $<TARGET_PDB_FILE:VectorVoxel>
-        DESTINATION ${CMAKE_INSTALL_BINDIR}
-        CONFIGURATIONS Debug RelWithDebInfo
-        OPTIONAL)
-    else()
-      install(
-        FILES
-          $<TARGET_FILE_DIR:VectorVoxel>/$<TARGET_FILE_BASE_NAME:VectorVoxel>.pdb
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        CONFIGURATIONS Debug RelWithDebInfo
-        OPTIONAL)
-    endif()
-  endif()
 endif()
